@@ -14,8 +14,10 @@ vi.mock('@actions/artifact', () => ({
   }))
 }))
 
+const mockSetFailed = vi.fn()
+
 // Mock @actions/core
-vi.mock('@actions/core', () => ({ default: { setOutput: mockSetOutput } }))
+vi.mock('@actions/core', () => ({ default: { setOutput: mockSetOutput, setFailed: mockSetFailed } }))
 
 // Mock @actions/github
 vi.mock('@actions/github', () => ({
@@ -74,6 +76,7 @@ describe('diff.mjs — no baseline found', () => {
   it('writes has_baseline: false diff and sets regression output to none', async () => {
     process.env.GITHUB_EVENT_NAME = 'pull_request'
     process.env.GITHUB_BASE_REF = 'main'
+    process.env.VERDURE_TOKEN = 'test-token'
 
     writeFileSync('verdure-scan.json', JSON.stringify(baseline))
 

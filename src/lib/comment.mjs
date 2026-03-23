@@ -89,12 +89,12 @@ export function renderComment(diff, scan) {
     ? [
         '',
         `> ⚠️ Regression detected`,
-        '> [Verdure](https://github.com/verdure-io/verdure) · SWD model · [methodology](https://verdure.io/docs/methodology)'
+        '> [Verdure](https://github.com/verdure-io/verdure) · SWD model · [methodology](https://sustainablewebdesign.org/calculating-digital-emissions/)'
       ].join('\n')
     : [
         '',
         '> ✅ No regression detected',
-        '> [Verdure](https://github.com/verdure-io/verdure) · SWD model · [methodology](https://verdure.io/docs/methodology)'
+        '> [Verdure](https://github.com/verdure-io/verdure) · SWD model · [methodology](https://sustainablewebdesign.org/calculating-digital-emissions/)'
       ].join('\n')
 
   return [

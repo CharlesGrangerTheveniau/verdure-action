@@ -22,6 +22,10 @@ export async function runBaseline() {
  */
 export async function runDiff({ carbonBudget, weightBudget }) {
   const token = process.env.VERDURE_TOKEN
+  if (!token) {
+    core.setFailed('VERDURE_TOKEN is required. Add `token: ${{ secrets.GITHUB_TOKEN }}` to your workflow.')
+    return
+  }
   const octokit = github.getOctokit(token)
   const { owner, repo } = github.context.repo
 

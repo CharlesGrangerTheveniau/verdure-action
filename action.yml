@@ -36,6 +36,10 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Install dependencies
+      shell: bash
+      run: npm ci --prefix ${{ github.action_path }}
+
     - name: Scan
       id: scan
       shell: bash

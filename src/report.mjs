@@ -1,6 +1,7 @@
 // src/report.mjs
 import { readFileSync } from 'fs'
 import github from '@actions/github'
+import core from '@actions/core'
 import { renderComment } from './lib/comment.mjs'
 
 /**
@@ -17,6 +18,10 @@ function getConclusion(diff, failOnRegression) {
 
 export async function runReport() {
   const token = process.env.VERDURE_TOKEN
+  if (!token) {
+    core.setFailed('VERDURE_TOKEN is required. Add `token: ${{ secrets.GITHUB_TOKEN }}` to your workflow.')
+    return
+  }
   const failOnRegression = process.env.VERDURE_FAIL_ON_REGRESSION !== 'false'
 
   const octokit = github.getOctokit(token)
@@ -58,10 +63,11 @@ export async function runReport() {
   // Create Check Run
   const conclusion = getConclusion(diff, failOnRegression)
   const hasRegression = diff.regression?.carbon || diff.regression?.weight
+  const fmtPct = (v) => v != null ? `${v > 0 ? '+' : ''}${v}%` : '(unknown)'
   const title = !diff.has_baseline
     ? 'No baseline — first scan complete'
     : hasRegression
-    ? `Regression detected — CO₂ ${diff.carbon_delta_pct > 0 ? '+' : ''}${diff.carbon_delta_pct}%, weight ${diff.weight_delta_pct > 0 ? '+' : ''}${diff.weight_delta_pct}%`
+    ? `Regression detected — CO₂ ${fmtPct(diff.carbon_delta_pct)}, weight ${fmtPct(diff.weight_delta_pct)}`
     : `No regression — ${diff.carbon_after_grams?.toFixed(3)}g CO₂, ${Math.round((diff.weight_after_bytes ?? scan.total_bytes) / 1024)} KB`
 
   await octokit.rest.checks.create({

@@ -55,7 +55,7 @@ describe('detectRegression', () => {
   it('flags weight budget exceeded when value exceeds budget (in KB)', () => {
     const result = detectRegression(
       diff({ weight_after_bytes: 600000 }),
-      { weightBudget: 500 }   // 500 KB = 512000 bytes
+      { weightBudget: 500 }   // weightBudget is in KiB; 600000 bytes = ~586 KiB > 500
     )
     expect(result.budget_exceeded.weight).toBe(true)
   })

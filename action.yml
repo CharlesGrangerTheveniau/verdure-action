@@ -16,7 +16,7 @@ inputs:
     required: false
     default: ''
   token:
-    description: 'GITHUB_TOKEN — needs pull-requests:write and checks:write'
+    description: 'GITHUB_TOKEN — needs pull-requests:write, checks:write, and actions:read'
     required: true
   carbon-budget:
     description: 'Max CO₂ grams per visit (SWD model). Fails check if exceeded.'
@@ -65,12 +65,25 @@ runs:
         VERDURE_SITEMAP_URL: ${{ inputs.sitemap-url }}
         VERDURE_BYPASS_SECRET: ${{ inputs.vercel-bypass-secret }}
 
-    - name: Download baseline
+    - name: Find baseline run
+      id: find-baseline
       if: steps.mode.outputs.is_pr == 'true'
+      shell: bash
+      run: |
+        RUN_ID=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=verdure-baseline&per_page=5" \
+          --jq '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .workflow_run.id // ""')
+        echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+
+    - name: Download baseline
+      if: steps.mode.outputs.is_pr == 'true' && steps.find-baseline.outputs.run_id != ''
       uses: actions/download-artifact@v4
       with:
         name: verdure-baseline
         path: ./.verdure-baseline
+        run-id: ${{ steps.find-baseline.outputs.run_id }}
+        github-token: ${{ inputs.token }}
       continue-on-error: true
 
     - name: Diff

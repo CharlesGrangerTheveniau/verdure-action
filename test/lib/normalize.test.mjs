@@ -22,6 +22,10 @@ describe('normalizeUrl', () => {
     expect(normalizeUrl('styles.css')).toBe('styles.css')
   })
 
+  it('does not strip hex-looking real words from filenames', () => {
+    expect(normalizeUrl('facade.css')).toBe('facade.css')
+  })
+
   it('extracts pathname from full https URL then normalises', () => {
     expect(normalizeUrl('https://example.com/_next/static/bundle.abc123de.js'))
       .toBe('_next/static/bundle.js')

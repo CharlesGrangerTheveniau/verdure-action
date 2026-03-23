@@ -21,10 +21,11 @@ export function normalizeUrl(url) {
   // Strip query string
   path = path.split('?')[0]
 
-  // Strip content hashes: hex sequences of 6+ chars preceded by . or -
-  // and followed by . or end of string
-  // Covers: bundle.abc123de.js, main-abc123de.js
-  path = path.replace(/[.\-][0-9a-fA-F]{6,}(?=[.\-]|$)/g, '')
+  // Strip content hashes: hex sequences of 8+ chars preceded by . or -
+  // and followed by . or - or end of string.
+  // Requires 8+ chars to avoid false positives on short hex-looking words (e.g. facade, decade).
+  // Covers: bundle.abc123de.js, main-abc123def456.js
+  path = path.replace(/[.\-][0-9a-fA-F]{8,}(?=[.\-]|$)/g, '')
 
   // Strip leading slash
   return path.replace(/^\//, '')

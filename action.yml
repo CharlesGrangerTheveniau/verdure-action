@@ -4,7 +4,7 @@ author: 'verdure-io'
 
 inputs:
   url:
-    description: 'URL to scan. Optional when sitemap-url is provided.'
+    description: 'URL to scan. Auto-detected from deployment events when not set.'
     required: false
     default: ''
   sitemap-url:
@@ -45,16 +45,23 @@ runs:
       shell: bash
       run: npm ci --prefix ${{ github.action_path }}
 
+    - name: Detect mode
+      id: mode
+      shell: bash
+      run: node ${{ github.action_path }}/src/detect-mode.mjs
+      env:
+        VERDURE_TOKEN: ${{ inputs.token }}
+
     - name: Scan
       id: scan
       shell: bash
       run: node ${{ github.action_path }}/src/scan.mjs
       env:
-        VERDURE_URL: ${{ inputs.url }}
+        VERDURE_URL: ${{ inputs.url != '' && inputs.url || github.event.deployment_status.target_url }}
         VERDURE_SITEMAP_URL: ${{ inputs.sitemap-url }}
 
     - name: Download baseline
-      if: github.event_name == 'pull_request'
+      if: steps.mode.outputs.is_pr == 'true'
       uses: actions/download-artifact@v4
       with:
         name: verdure-baseline
@@ -66,11 +73,12 @@ runs:
       shell: bash
       run: node ${{ github.action_path }}/src/diff.mjs
       env:
+        VERDURE_IS_PR: ${{ steps.mode.outputs.is_pr }}
         VERDURE_CARBON_BUDGET: ${{ inputs.carbon-budget }}
         VERDURE_WEIGHT_BUDGET: ${{ inputs.weight-budget }}
 
     - name: Upload baseline
-      if: github.event_name == 'push'
+      if: steps.mode.outputs.is_baseline == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: verdure-baseline
@@ -84,6 +92,8 @@ runs:
       env:
         VERDURE_TOKEN: ${{ inputs.token }}
         VERDURE_FAIL_ON_REGRESSION: ${{ inputs.fail-on-regression }}
+        VERDURE_PR_NUMBER: ${{ steps.mode.outputs.pr_number }}
+        VERDURE_HEAD_SHA: ${{ steps.mode.outputs.head_sha }}
 
 branding:
   icon: 'activity'

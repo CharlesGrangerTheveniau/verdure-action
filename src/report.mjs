@@ -26,11 +26,15 @@ export async function runReport() {
 
   const octokit = github.getOctokit(token)
   const { owner, repo } = github.context.repo
-  const pr = github.context.payload.pull_request
-  const prNumber = pr?.number
-  const headSha = pr?.head?.sha
 
-  // Skip comment + check if not a PR context (before reading files)
+  // VERDURE_PR_NUMBER / VERDURE_HEAD_SHA are set by detect-mode.mjs and work
+  // across pull_request, deployment_status, and push events.
+  const prNumber = process.env.VERDURE_PR_NUMBER
+    ? parseInt(process.env.VERDURE_PR_NUMBER, 10)
+    : github.context.payload.pull_request?.number
+  const headSha = process.env.VERDURE_HEAD_SHA
+    || github.context.payload.pull_request?.head?.sha
+
   if (!prNumber || !headSha) {
     console.log('ℹ️  No PR context — skipping comment and check run.')
     return
@@ -82,11 +86,13 @@ export async function runReport() {
   console.log(`✅ Check run created: ${conclusion}`)
 }
 
-// Entry point
+// Entry point — runs whenever there is a PR context (set by detect-mode.mjs)
 if (!process.env.VITEST) {
-  if (process.env.GITHUB_EVENT_NAME === 'pull_request') {
+  const hasPrContext = process.env.VERDURE_PR_NUMBER
+    || process.env.GITHUB_EVENT_NAME === 'pull_request'
+  if (hasPrContext) {
     await runReport()
   } else {
-    console.log('ℹ️  Not a PR — skipping report.')
+    console.log('ℹ️  No PR context — skipping report.')
   }
 }

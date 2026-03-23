@@ -42,16 +42,12 @@ export async function runDiff({ carbonBudget, weightBudget }) {
 
 // Entry point when run as a script (skipped during Vitest runs)
 if (!process.env.VITEST) {
-  const eventName = process.env.GITHUB_EVENT_NAME ?? ''
-  const ref = process.env.GITHUB_REF ?? ''
+  // VERDURE_IS_PR is set by detect-mode.mjs in action.yml.
+  // Fall back to GITHUB_EVENT_NAME for backwards compatibility.
+  const isPR = process.env.VERDURE_IS_PR === 'true'
+    || (process.env.VERDURE_IS_PR === undefined && process.env.GITHUB_EVENT_NAME === 'pull_request')
 
-  const isMain = ref === 'refs/heads/main' || ref === 'refs/heads/master'
-  const isPush = eventName === 'push'
-  const isPR = eventName === 'pull_request'
-
-  if (isPush && isMain) {
-    await runBaseline()
-  } else if (isPR) {
+  if (isPR) {
     const carbonBudget = process.env.VERDURE_CARBON_BUDGET
       ? parseFloat(process.env.VERDURE_CARBON_BUDGET)
       : null
@@ -60,9 +56,7 @@ if (!process.env.VITEST) {
       : null
     await runDiff({ carbonBudget, weightBudget })
   } else {
-    // Feature branch push — scan only mode. diff.mjs does nothing.
-    console.log('ℹ️  Not a PR or main push — skipping diff.')
-    writeFileSync('verdure-diff.json', JSON.stringify({ has_baseline: false }))
-    core.setOutput('regression', 'none')
+    // Baseline mode or scan-only — upload is handled by action.yml step.
+    await runBaseline()
   }
 }

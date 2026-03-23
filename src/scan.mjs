@@ -4,6 +4,7 @@ import { parse } from 'node-html-parser'
 import { co2 } from '@tgwf/co2'
 import core from '@actions/core'
 import { normalizeUrl } from './lib/normalize.mjs'
+import { fetchAndAnalyzeSourceMap } from './lib/sourcemap.mjs'
 
 const CO2JS_VERSION = JSON.parse(
   readFileSync(new URL('../node_modules/@tgwf/co2/package.json', import.meta.url), 'utf8')
@@ -111,6 +112,15 @@ export async function scanUrl(url) {
       third_party: new URL(assetUrl).hostname !== base.hostname
     }
   })
+
+  // Enrich large JS bundles with source map package breakdown (non-fatal)
+  await Promise.all(
+    assets
+      .filter(a => a.type === 'script' && a.bytes > 200 * 1024)
+      .map(async a => {
+        a.packages = await fetchAndAnalyzeSourceMap(a.url, a.bytes)
+      })
+  )
 
   const total_bytes = assets.reduce((sum, a) => sum + a.bytes, 0)
   const green_hosting = await checkGreenHosting(base.hostname)

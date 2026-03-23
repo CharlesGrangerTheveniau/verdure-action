@@ -56,6 +56,33 @@ const renderSuggestions = (scan) => {
   ].join('\n')
 }
 
+const renderBundleBreakdown = (assets = []) => {
+  const bundles = assets
+    .filter(a => a.type === 'script' && a.packages?.length > 0)
+    .sort((a, b) => b.bytes - a.bytes)
+    .slice(0, 2)
+
+  if (bundles.length === 0) return ''
+
+  return bundles.map(asset => {
+    const name = asset.normalized_url.split('/').pop()
+    const deps = asset.packages.filter(p => p.package !== '__app__')
+    const app  = asset.packages.find(p => p.package === '__app__')
+    const rows = [
+      ...deps.map(p => `| \`${p.package}\` | ${formatBytes(p.bytes)} | ${p.pct}% |`),
+      ...(app ? [`| app code | ${formatBytes(app.bytes)} | ${app.pct}% |`] : [])
+    ]
+    return [
+      '',
+      `**Bundle breakdown** — \`${name}\` (${formatBytes(asset.bytes)})`,
+      '| Package | Approx. size | Share |',
+      '|---|---|---|',
+      ...rows,
+      '<sub>Sizes are approximate — based on unminified source proportions</sub>'
+    ].join('\n')
+  }).join('\n')
+}
+
 /**
  * Renders the PR comment markdown from a diff result and current scan.
  * Always includes the <!-- verdure --> marker for upsert detection.
@@ -80,6 +107,7 @@ export function renderComment(diff, scan) {
       `| ⚖️ Page weight | **${formatBytes(scan.total_bytes)}** |`,
       `| 🌱 Green hosting | ${formatGreenHosting(scan.green_hosting)} |`,
       renderTopAssets(scan.assets),
+      renderBundleBreakdown(scan.assets),
       renderSuggestions(scan),
       '',
       `<sub>[Verdure](https://github.com/CharlesGrangerTheveniau/verdure-action) · SWD model · [methodology](https://sustainablewebdesign.org/calculating-digital-emissions/)</sub>`
@@ -152,6 +180,7 @@ export function renderComment(diff, scan) {
     greenRow,
     changesTable,
     renderTopAssets(scan.assets),
+    renderBundleBreakdown(scan.assets),
     renderSuggestions(scan),
     footer
   ].join('\n')

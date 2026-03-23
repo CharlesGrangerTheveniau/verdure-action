@@ -4,6 +4,7 @@ import { writeFileSync, readFileSync } from 'fs'
 
 const mockUpload = vi.fn(async () => ({}))
 const mockDownload = vi.fn(async () => ({}))
+const mockSetOutput = vi.fn()
 
 // Mock @actions/artifact
 vi.mock('@actions/artifact', () => ({
@@ -12,6 +13,9 @@ vi.mock('@actions/artifact', () => ({
     downloadArtifact: mockDownload
   }))
 }))
+
+// Mock @actions/core
+vi.mock('@actions/core', () => ({ default: { setOutput: mockSetOutput } }))
 
 // Mock @actions/github
 vi.mock('@actions/github', () => ({
@@ -63,6 +67,10 @@ describe('diff.mjs — baseline mode', () => {
 })
 
 describe('diff.mjs — no baseline found', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('writes has_baseline: false diff and sets regression output to none', async () => {
     process.env.GITHUB_EVENT_NAME = 'pull_request'
     process.env.GITHUB_BASE_REF = 'main'
@@ -74,5 +82,6 @@ describe('diff.mjs — no baseline found', () => {
 
     const diff = JSON.parse(readFileSync('verdure-diff.json', 'utf8'))
     expect(diff.has_baseline).toBe(false)
+    expect(mockSetOutput).toHaveBeenCalledWith('regression', 'none')
   })
 })

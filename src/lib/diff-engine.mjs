@@ -58,13 +58,13 @@ export function buildDiff(baseline, current) {
   const carbon_delta_grams = parseFloat(
     (current.co2_swd_grams - baseline.co2_swd_grams).toFixed(4)
   )
-  const carbon_delta_pct = Math.round(
-    ((current.co2_swd_grams - baseline.co2_swd_grams) / baseline.co2_swd_grams) * 100
-  )
+  const carbon_delta_pct = baseline.co2_swd_grams > 0
+    ? Math.round(((current.co2_swd_grams - baseline.co2_swd_grams) / baseline.co2_swd_grams) * 100)
+    : null
   const weight_delta_bytes = current.total_bytes - baseline.total_bytes
-  const weight_delta_pct = Math.round(
-    ((current.total_bytes - baseline.total_bytes) / baseline.total_bytes) * 100
-  )
+  const weight_delta_pct = baseline.total_bytes > 0
+    ? Math.round(((current.total_bytes - baseline.total_bytes) / baseline.total_bytes) * 100)
+    : null
 
   return {
     has_baseline: true,

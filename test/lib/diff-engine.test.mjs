@@ -106,4 +106,19 @@ describe('buildDiff', () => {
     expect(diff.weight_delta_bytes).toBe(100000)
     expect(diff.weight_delta_pct).toBe(25)
   })
+
+  it('returns null delta_pct when baseline values are zero', () => {
+    const baseline = scan({ co2_swd_grams: 0, total_bytes: 0 })
+    const current = scan({ co2_swd_grams: 0.40, total_bytes: 400000 })
+    const diff = buildDiff(baseline, current)
+    expect(diff.carbon_delta_pct).toBeNull()
+    expect(diff.weight_delta_pct).toBeNull()
+  })
+
+  it('rounds carbon_delta_grams to 4 decimal places', () => {
+    const baseline = scan({ co2_swd_grams: 0.40 })
+    const current = scan({ co2_swd_grams: 0.43 })
+    const diff = buildDiff(baseline, current)
+    expect(diff.carbon_delta_grams).toBe(0.03)
+  })
 })

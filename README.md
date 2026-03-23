@@ -87,9 +87,11 @@ warning comment instead of silently showing 0.00g.
 
 ### Fix: Protection Bypass for Automation
 
-**Step 1** — In your Vercel project: `Settings → Deployment Protection → Protection Bypass for Automation`. Enable it and copy the generated secret.
+This requires one action on Vercel and one on GitHub — both are needed.
 
-**Step 2** — Add the secret to your GitHub repo: `Settings → Secrets and variables → Actions → New repository secret`. Name it `VERCEL_BYPASS_SECRET`.
+**Step 1 — Vercel:** Go to your project `Settings → Deployment Protection → Protection Bypass for Automation`. Enable it. Vercel generates a secret — **copy that value now** (you won't easily see it again).
+
+**Step 2 — GitHub:** Go to your repo `Settings → Secrets and variables → Actions → New repository secret`. Name it `VERCEL_BYPASS_SECRET`, paste the value you copied from Vercel. These are separate stores — Vercel doesn't push anything to GitHub automatically.
 
 **Step 3** — Pass it to the action:
 

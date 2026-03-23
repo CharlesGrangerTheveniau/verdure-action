@@ -37,15 +37,29 @@ const formatDelta = (pct, bytes) => {
 const renderTopAssets = (assets = []) => {
   const top = [...assets].sort((a, b) => b.bytes - a.bytes).slice(0, 5)
   if (top.length === 0) return ''
+
+  const rows = []
+  for (const a of top) {
+    const name = a.normalized_url.split('/').pop()
+    rows.push(`| \`${name}\` | ${a.type} | ${formatBytes(a.bytes)} |`)
+    if (a.packages?.length > 0) {
+      const deps = a.packages.filter(p => p.package !== '__app__').slice(0, 4)
+      const app  = a.packages.find(p => p.package === '__app__')
+      for (const p of deps) {
+        rows.push(`| &nbsp;&nbsp;↳ \`${p.package}\` | | ${formatBytes(p.bytes)} · ${p.pct}% |`)
+      }
+      if (app) {
+        rows.push(`| &nbsp;&nbsp;↳ app code | | ${formatBytes(app.bytes)} · ${app.pct}% |`)
+      }
+    }
+  }
+
   return [
     '',
     '**Top assets by weight**',
     '| Asset | Type | Size |',
     '|---|---|---|',
-    ...top.map(a => {
-      const name = a.normalized_url.split('/').pop()
-      return `| \`${name}\` | ${a.type} | ${formatBytes(a.bytes)} |`
-    })
+    ...rows
   ].join('\n')
 }
 
@@ -59,7 +73,7 @@ const renderSuggestions = (scan) => {
   ].join('\n')
 }
 
-const renderBundleBreakdown = (assets = []) => {
+const renderOptimizationPrompt = (assets = []) => {
   const bundles = assets
     .filter(a => a.type === 'script' && a.packages?.length > 0)
     .sort((a, b) => b.bytes - a.bytes)
@@ -67,23 +81,26 @@ const renderBundleBreakdown = (assets = []) => {
 
   if (bundles.length === 0) return ''
 
-  return bundles.map(asset => {
+  const promptBody = bundles.map(asset => {
     const name = asset.normalized_url.split('/').pop()
-    const deps = asset.packages.filter(p => p.package !== '__app__')
-    const app  = asset.packages.find(p => p.package === '__app__')
-    const rows = [
-      ...deps.map(p => `| \`${p.package}\` | ${formatBytes(p.bytes)} | ${p.pct}% |`),
-      ...(app ? [`| app code | ${formatBytes(app.bytes)} | ${app.pct}% |`] : [])
-    ]
-    return [
-      '',
-      `**Bundle breakdown** — \`${name}\` (${formatBytes(asset.bytes)})`,
-      '| Package | Approx. size | Share |',
-      '|---|---|---|',
-      ...rows,
-      '<sub>Sizes are approximate — based on unminified source proportions</sub>'
-    ].join('\n')
-  }).join('\n')
+    const deps = asset.packages.filter(p => p.package !== '__app__').slice(0, 6)
+    const depList = deps.map(p => `- \`${p.package}\` — ${formatBytes(p.bytes)} (${p.pct}%)`).join('\n')
+    return `Bundle \`${name}\` is ${formatBytes(asset.bytes)}. Heaviest dependencies:\n${depList}`
+  }).join('\n\n')
+
+  const prompt = `I want to reduce my web app's JavaScript bundle size.\n\n${promptBody}\n\nFor each package, tell me:\n1. Can it be lazy-loaded with dynamic \`import()\` or \`React.lazy()\`?\n2. Is there a lighter drop-in alternative?\n3. Is it tree-shakeable, and how?\n4. Any other specific optimization?`
+
+  return [
+    '',
+    '<details>',
+    '<summary>💬 Copy prompt — ask AI to fix this</summary>',
+    '',
+    '```',
+    prompt,
+    '```',
+    '',
+    '</details>'
+  ].join('\n')
 }
 
 /**
@@ -128,7 +145,7 @@ export function renderComment(diff, scan) {
       `| ⚖️ Page weight | **${formatBytes(scan.total_bytes)}** |`,
       `| 🌱 Green hosting | ${formatGreenHosting(scan.green_hosting)} |`,
       renderTopAssets(scan.assets),
-      renderBundleBreakdown(scan.assets),
+      renderOptimizationPrompt(scan.assets),
       renderSuggestions(scan),
       '',
       `<sub>[Verdure](https://github.com/CharlesGrangerTheveniau/verdure-action) · SWD model · [methodology](https://sustainablewebdesign.org/calculating-digital-emissions/)</sub>`
@@ -201,7 +218,7 @@ export function renderComment(diff, scan) {
     greenRow,
     changesTable,
     renderTopAssets(scan.assets),
-    renderBundleBreakdown(scan.assets),
+    renderOptimizationPrompt(scan.assets),
     renderSuggestions(scan),
     footer
   ].join('\n')

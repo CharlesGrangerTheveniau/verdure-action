@@ -1,5 +1,8 @@
 import { buildSuggestions } from './suggestions.mjs'
 
+const isScanEmpty = (scan) => !scan?.total_bytes
+const isVercelUrl = (url) => typeof url === 'string' && url.includes('.vercel.app')
+
 const getGrade = (grams) => {
   if (grams < 0.095) return { label: 'A+', dot: '🟢' }
   if (grams < 0.19)  return { label: 'A',  dot: '🟢' }
@@ -92,6 +95,24 @@ const renderBundleBreakdown = (assets = []) => {
  * @returns {string} GitHub Markdown
  */
 export function renderComment(diff, scan) {
+  if (isScanEmpty(scan)) {
+    const vercel = isVercelUrl(scan?.url)
+    const warning = vercel
+      ? 'Scan returned 0 KB — your Vercel preview is likely protected by Vercel Authentication.\n> Enable **Protection Bypass for Automation** in your Vercel project settings, or disable preview protection.'
+      : 'Scan returned 0 KB — the URL may require authentication or returned an empty response.'
+    return [
+      '<!-- verdure -->',
+      '## 🌿 Verdure — ⚠️ Scan failed',
+      '',
+      '> [!WARNING]',
+      `> ${warning}`,
+      '',
+      `Scanned: \`${scan?.url ?? 'unknown'}\``,
+      '',
+      '<sub>[Verdure](https://github.com/CharlesGrangerTheveniau/verdure-action)</sub>'
+    ].join('\n')
+  }
+
   if (!diff.has_baseline) {
     const grade = getGrade(scan.co2_swd_grams)
     return [

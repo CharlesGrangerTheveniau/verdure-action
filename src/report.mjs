@@ -7,7 +7,8 @@ import { renderComment } from './lib/comment.mjs'
 /**
  * Determine Check Run conclusion from diff + fail-on-regression flag.
  */
-function getConclusion(diff, failOnRegression) {
+function getConclusion(diff, failOnRegression, scan) {
+  if (!scan?.total_bytes) return 'neutral'
   if (!diff.has_baseline) return 'neutral'
   const hasRegression = diff.regression?.carbon || diff.regression?.weight
   const hasBudgetExceeded = diff.budget_exceeded?.carbon || diff.budget_exceeded?.weight
@@ -65,10 +66,12 @@ export async function runReport() {
   }
 
   // Create Check Run
-  const conclusion = getConclusion(diff, failOnRegression)
+  const conclusion = getConclusion(diff, failOnRegression, scan)
   const hasRegression = diff.regression?.carbon || diff.regression?.weight
   const fmtPct = (v) => v != null ? `${v > 0 ? '+' : ''}${v}%` : '(unknown)'
-  const title = !diff.has_baseline
+  const title = !scan?.total_bytes
+    ? 'Scan returned 0 KB — check URL accessibility'
+    : !diff.has_baseline
     ? 'No baseline — first scan complete'
     : hasRegression
     ? `Regression detected — CO₂ ${fmtPct(diff.carbon_delta_pct)}, weight ${fmtPct(diff.weight_delta_pct)}`

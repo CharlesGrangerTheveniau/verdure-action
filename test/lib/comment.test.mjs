@@ -103,6 +103,22 @@ describe('renderComment', () => {
     expect(comment).toContain('new')
   })
 
+  it('shows Vercel-specific warning when scan returns 0 KB on vercel.app URL', () => {
+    const emptyScan = { total_bytes: 0, url: 'https://my-app.vercel.app', co2_swd_grams: 0, assets: [] }
+    const comment = renderComment({ has_baseline: false }, emptyScan)
+    expect(comment).toContain('Scan failed')
+    expect(comment).toContain('Protection Bypass for Automation')
+    expect(comment).toContain('my-app.vercel.app')
+  })
+
+  it('shows generic warning when scan returns 0 KB on non-Vercel URL', () => {
+    const emptyScan = { total_bytes: 0, url: 'https://mysite.com', co2_swd_grams: 0, assets: [] }
+    const comment = renderComment({ has_baseline: false }, emptyScan)
+    expect(comment).toContain('Scan failed')
+    expect(comment).toContain('may require authentication')
+    expect(comment).not.toContain('Protection Bypass')
+  })
+
   it('shows top assets table in no-baseline comment', () => {
     const comment = renderComment({ has_baseline: false }, scanWithAssets)
     expect(comment).toContain('Top assets by weight')

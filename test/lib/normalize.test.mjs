@@ -26,6 +26,14 @@ describe('normalizeUrl', () => {
     expect(normalizeUrl('facade.css')).toBe('facade.css')
   })
 
+  it('strips Vite-style base64 hash (mixed-case alphanumeric)', () => {
+    expect(normalizeUrl('assets/index-DWSxftZm.js')).toBe('assets/index.js')
+  })
+
+  it('does not strip lowercase word-like segments (e.g. -vendors)', () => {
+    expect(normalizeUrl('assets/chunk-vendors.js')).toBe('assets/chunk-vendors.js')
+  })
+
   it('extracts pathname from full https URL then normalises', () => {
     expect(normalizeUrl('https://example.com/_next/static/bundle.abc123de.js'))
       .toBe('_next/static/bundle.js')

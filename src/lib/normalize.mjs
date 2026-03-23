@@ -21,11 +21,17 @@ export function normalizeUrl(url) {
   // Strip query string
   path = path.split('?')[0]
 
-  // Strip content hashes: hex sequences of 8+ chars preceded by . or -
-  // and followed by . or - or end of string.
-  // Requires 8+ chars to avoid false positives on short hex-looking words (e.g. facade, decade).
-  // Covers: bundle.abc123de.js, main-abc123def456.js
+  // Strip hex content hashes: 8+ hex chars preceded by . or -
+  // Covers webpack/CRA: bundle.abc123de.js, main-abc123def456.js
+  // Requires 8+ chars to avoid false positives (e.g. facade, decade).
   path = path.replace(/[.\-][0-9a-fA-F]{8,}(?=[.\-]|$)/g, '')
+
+  // Strip Vite-style base64 hashes: exactly 8 alphanumeric chars preceded by -
+  // Vite hashes like -DWSxftZm contain uppercase letters; real words (vendors, runtime) don't.
+  // Condition: requires at least one uppercase letter to avoid stripping word-like segments.
+  path = path.replace(/-([a-zA-Z0-9]{8})(?=\.[a-zA-Z0-9])/g, (match, hash) =>
+    /[A-Z]/.test(hash) ? '' : match
+  )
 
   // Strip leading slash
   return path.replace(/^\//, '')

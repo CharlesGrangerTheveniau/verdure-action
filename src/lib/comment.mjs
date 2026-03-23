@@ -1,3 +1,5 @@
+import { buildSuggestions } from './suggestions.mjs'
+
 const getGrade = (grams) => {
   if (grams < 0.095) return { label: 'A+', dot: '🟢' }
   if (grams < 0.19)  return { label: 'A',  dot: '🟢' }
@@ -29,6 +31,31 @@ const formatDelta = (pct, bytes) => {
   return `${sign}${pct}%`
 }
 
+const renderTopAssets = (assets = []) => {
+  const top = [...assets].sort((a, b) => b.bytes - a.bytes).slice(0, 5)
+  if (top.length === 0) return ''
+  return [
+    '',
+    '**Top assets by weight**',
+    '| Asset | Type | Size |',
+    '|---|---|---|',
+    ...top.map(a => {
+      const name = a.normalized_url.split('/').pop()
+      return `| \`${name}\` | ${a.type} | ${formatBytes(a.bytes)} |`
+    })
+  ].join('\n')
+}
+
+const renderSuggestions = (scan) => {
+  const items = buildSuggestions(scan)
+  if (items.length === 0) return ''
+  return [
+    '',
+    '**Suggestions**',
+    ...items.map(s => `- ${s}`)
+  ].join('\n')
+}
+
 /**
  * Renders the PR comment markdown from a diff result and current scan.
  * Always includes the <!-- verdure --> marker for upsert detection.
@@ -52,6 +79,8 @@ export function renderComment(diff, scan) {
       `| 🌍 CO₂ / visit | **${formatGrams(scan.co2_swd_grams)}** |`,
       `| ⚖️ Page weight | **${formatBytes(scan.total_bytes)}** |`,
       `| 🌱 Green hosting | ${formatGreenHosting(scan.green_hosting)} |`,
+      renderTopAssets(scan.assets),
+      renderSuggestions(scan),
       '',
       `<sub>[Verdure](https://github.com/CharlesGrangerTheveniau/verdure-action) · SWD model · [methodology](https://sustainablewebdesign.org/calculating-digital-emissions/)</sub>`
     ].join('\n')
@@ -122,6 +151,8 @@ export function renderComment(diff, scan) {
     weightRow,
     greenRow,
     changesTable,
+    renderTopAssets(scan.assets),
+    renderSuggestions(scan),
     footer
   ].join('\n')
 }

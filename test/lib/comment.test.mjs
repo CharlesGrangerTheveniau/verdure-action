@@ -4,7 +4,22 @@ import { renderComment } from '../../src/lib/comment.mjs'
 const noBaselineScan = {
   co2_swd_grams: 0.42,
   total_bytes: 450000,
-  green_hosting: true
+  green_hosting: true,
+  assets: [],
+  summary: { third_party_bytes: 0, third_party_count: 0 }
+}
+
+const scanWithAssets = {
+  co2_swd_grams: 1.01,
+  total_bytes: 2483 * 1024,
+  green_hosting: false,
+  assets: [
+    { normalized_url: 'vendor.js',  type: 'script', bytes: 1200 * 1024, third_party: false, url: 'https://example.com/vendor.js' },
+    { normalized_url: 'hero.jpg',   type: 'image',  bytes: 450 * 1024,  third_party: false, url: 'https://example.com/hero.jpg' },
+    { normalized_url: 'app.css',    type: 'style',  bytes: 80 * 1024,   third_party: false, url: 'https://example.com/app.css' },
+    { normalized_url: 'analytics.js', type: 'script', bytes: 95 * 1024, third_party: true,  url: 'https://cdn.example.com/analytics.js' }
+  ],
+  summary: { third_party_bytes: 95 * 1024, third_party_count: 1 }
 }
 
 const baseDiff = {
@@ -86,6 +101,23 @@ describe('renderComment', () => {
     const comment = renderComment(diff, noBaselineScan)
     expect(comment).toContain('banner.webp')
     expect(comment).toContain('new')
+  })
+
+  it('shows top assets table in no-baseline comment', () => {
+    const comment = renderComment({ has_baseline: false }, scanWithAssets)
+    expect(comment).toContain('Top assets by weight')
+    expect(comment).toContain('vendor.js')
+    expect(comment).toContain('hero.jpg')
+    expect(comment).toContain('1200 KB')
+  })
+
+  it('shows suggestions for legacy image format and large JS bundle', () => {
+    const comment = renderComment({ has_baseline: false }, scanWithAssets)
+    expect(comment).toContain('Suggestions')
+    expect(comment).toContain('hero.jpg')
+    expect(comment).toContain('WebP/AVIF')
+    expect(comment).toContain('vendor.js')
+    expect(comment).toContain('code-splitting')
   })
 
   it('renders removed asset with negative delta', () => {

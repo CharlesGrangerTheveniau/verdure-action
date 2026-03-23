@@ -1,9 +1,13 @@
 // src/scan.mjs
-import { writeFileSync } from 'fs'
+import { writeFileSync, readFileSync } from 'fs'
 import { parse } from 'node-html-parser'
 import { co2 } from '@tgwf/co2'
 import core from '@actions/core'
 import { normalizeUrl } from './lib/normalize.mjs'
+
+const CO2JS_VERSION = JSON.parse(
+  readFileSync(new URL('../node_modules/@tgwf/co2/package.json', import.meta.url), 'utf8')
+).version
 
 const CONCURRENCY = 10
 const TIMEOUT_MS = 5000
@@ -129,6 +133,7 @@ export async function scanUrl(url) {
     url,
     sha,
     timestamp: new Date().toISOString(),
+    co2js_version: CO2JS_VERSION,
     green_hosting,
     co2_swd_grams: swd.perByte(total_bytes, green_hosting ?? false),
     co2_one_byte_grams: oneByte.perByte(total_bytes, green_hosting ?? false),

@@ -1,0 +1,4 @@
+node_modules/
+verdure-scan.json
+verdure-diff.json
+coverage/

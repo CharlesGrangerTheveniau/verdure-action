@@ -1,0 +1,61 @@
+name: 'Verdure — Carbon & Performance'
+description: 'Carbon and performance regression checks for web apps. Diffs every deploy against the previous baseline.'
+author: 'verdure-io'
+
+inputs:
+  url:
+    description: 'URL to scan'
+    required: true
+  token:
+    description: 'GITHUB_TOKEN — needs pull-requests:write and checks:write'
+    required: true
+  carbon-budget:
+    description: 'Max CO₂ grams per visit (SWD model). Fails check if exceeded.'
+    required: false
+    default: ''
+  weight-budget:
+    description: 'Max page weight in KB. Fails check if exceeded.'
+    required: false
+    default: ''
+  fail-on-regression:
+    description: 'Fail check if regression exceeds 5% threshold'
+    required: false
+    default: 'true'
+
+outputs:
+  carbon-grams:
+    description: 'Estimated CO₂ per visit (SWD model)'
+    value: ${{ steps.scan.outputs.carbon-grams }}
+  page-weight-kb:
+    description: 'Total page weight in KB'
+    value: ${{ steps.scan.outputs.page-weight-kb }}
+  regression:
+    description: '"true" / "false" / "none" (no baseline yet)'
+    value: ${{ steps.diff.outputs.regression }}
+
+runs:
+  using: composite
+  steps:
+    - name: Scan
+      id: scan
+      shell: bash
+      run: node ${{ github.action_path }}/src/scan.mjs
+      env:
+        VERDURE_URL: ${{ inputs.url }}
+        VERDURE_TOKEN: ${{ inputs.token }}
+
+    - name: Diff
+      id: diff
+      shell: bash
+      run: node ${{ github.action_path }}/src/diff.mjs
+      env:
+        VERDURE_TOKEN: ${{ inputs.token }}
+        VERDURE_CARBON_BUDGET: ${{ inputs.carbon-budget }}
+        VERDURE_WEIGHT_BUDGET: ${{ inputs.weight-budget }}
+
+    - name: Report
+      shell: bash
+      run: node ${{ github.action_path }}/src/report.mjs
+      env:
+        VERDURE_TOKEN: ${{ inputs.token }}
+        VERDURE_FAIL_ON_REGRESSION: ${{ inputs.fail-on-regression }}

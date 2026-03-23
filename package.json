@@ -1,0 +1,20 @@
+{
+  "name": "verdure",
+  "version": "0.1.0",
+  "description": "Carbon and performance regression checks for web apps",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@actions/artifact": "^2",
+    "@actions/core": "^1",
+    "@actions/github": "^6",
+    "@tgwf/co2": "^0.14",
+    "node-html-parser": "^6"
+  },
+  "devDependencies": {
+    "vitest": "^1"
+  }
+}

@@ -145,12 +145,94 @@ export async function scanUrl(url) {
   }
 }
 
+const MAX_SITEMAP_URLS = 20
+
+/**
+ * Fetch and parse a sitemap.xml, returning up to MAX_SITEMAP_URLS <loc> values.
+ * Handles sitemap index files (one level of nesting). Non-fatal: returns [] on failure.
+ */
+export async function parseSitemap(sitemapUrl) {
+  try {
+    const res = await fetch(sitemapUrl)
+    if (!res.ok) return []
+    const xml = await res.text()
+
+    // Sitemap index: contains <sitemapindex> — recurse into child sitemaps
+    if (xml.includes('<sitemapindex')) {
+      const childUrls = [...xml.matchAll(/<loc>\s*(.*?)\s*<\/loc>/g)].map(m => m[1])
+      const nested = await Promise.all(childUrls.slice(0, 5).map(parseSitemap))
+      return nested.flat().slice(0, MAX_SITEMAP_URLS)
+    }
+
+    // Regular sitemap
+    return [...xml.matchAll(/<loc>\s*(.*?)\s*<\/loc>/g)]
+      .map(m => m[1])
+      .slice(0, MAX_SITEMAP_URLS)
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Scan multiple URLs sequentially, deduplicate assets, and return a merged result.
+ * total_bytes is the average per-page bytes (preserves "per visit" carbon semantics).
+ */
+export async function scanUrls(urls) {
+  const scans = []
+  for (const url of urls) {
+    try { scans.push(await scanUrl(url)) } catch { /* skip failed pages */ }
+  }
+  if (scans.length === 0) throw new Error('All URLs failed to scan')
+
+  // Deduplicate assets — keep max bytes for same normalized_url
+  const assetMap = new Map()
+  for (const scan of scans) {
+    for (const asset of scan.assets) {
+      const existing = assetMap.get(asset.normalized_url)
+      if (!existing || asset.bytes > existing.bytes) {
+        assetMap.set(asset.normalized_url, asset)
+      }
+    }
+  }
+  const assets = [...assetMap.values()]
+
+  // Average per-page bytes for carbon semantics
+  const avg_bytes = Math.round(scans.reduce((s, sc) => s + sc.total_bytes, 0) / scans.length)
+  const green_hosting = scans[0].green_hosting  // same host, checked once
+
+  const swd = new co2({ model: 'swd' })
+  const oneByte = new co2({ model: '1byte' })
+
+  return {
+    ...scans[0],                          // sha, timestamp, url
+    green_hosting,
+    co2_swd_grams: swd.perByte(avg_bytes, green_hosting ?? false),
+    co2_one_byte_grams: oneByte.perByte(avg_bytes, green_hosting ?? false),
+    total_bytes: avg_bytes,
+    pages_scanned: scans.length,
+    scanned_urls: scans.map(s => s.url),
+    assets,
+    summary: {
+      asset_count: assets.length,
+      js_bytes: assets.filter(a => a.type === 'script').reduce((s, a) => s + a.bytes, 0),
+      css_bytes: assets.filter(a => a.type === 'style').reduce((s, a) => s + a.bytes, 0),
+      image_bytes: assets.filter(a => a.type === 'image').reduce((s, a) => s + a.bytes, 0),
+      third_party_bytes: assets.filter(a => a.third_party).reduce((s, a) => s + a.bytes, 0),
+      third_party_count: assets.filter(a => a.third_party).length
+    }
+  }
+}
+
 // Entry point when run as a script (skipped during Vitest runs)
 if (!process.env.VITEST) {
-  const url = process.env.VERDURE_URL
-  if (!url) { console.error('VERDURE_URL is required'); process.exit(1) }
+  const sitemapUrl = process.env.VERDURE_SITEMAP_URL
+  const primaryUrl = process.env.VERDURE_URL
 
-  const scan = await scanUrl(url)
+  let urls = sitemapUrl ? await parseSitemap(sitemapUrl) : []
+  if (primaryUrl && !urls.includes(primaryUrl)) urls.unshift(primaryUrl)
+  if (urls.length === 0) { console.error('VERDURE_URL or VERDURE_SITEMAP_URL is required'); process.exit(1) }
+
+  const scan = urls.length === 1 ? await scanUrl(urls[0]) : await scanUrls(urls)
   writeFileSync('verdure-scan.json', JSON.stringify(scan, null, 2))
 
   core.setOutput('carbon-grams', scan.co2_swd_grams.toString())

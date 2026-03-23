@@ -4,8 +4,13 @@ author: 'verdure-io'
 
 inputs:
   url:
-    description: 'URL to scan'
-    required: true
+    description: 'URL to scan. Optional when sitemap-url is provided.'
+    required: false
+    default: ''
+  sitemap-url:
+    description: 'Sitemap URL to scan multiple routes (e.g. https://example.com/sitemap.xml). Capped at 20 URLs.'
+    required: false
+    default: ''
   token:
     description: 'GITHUB_TOKEN — needs pull-requests:write and checks:write'
     required: true
@@ -46,6 +51,7 @@ runs:
       run: node ${{ github.action_path }}/src/scan.mjs
       env:
         VERDURE_URL: ${{ inputs.url }}
+        VERDURE_SITEMAP_URL: ${{ inputs.sitemap-url }}
 
     - name: Diff
       id: diff

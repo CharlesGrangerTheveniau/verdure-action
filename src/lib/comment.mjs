@@ -4,7 +4,10 @@ const formatBytes = (bytes) => {
   return `${kb} KB`
 }
 
-const formatGrams = (g) => `${g.toFixed(2)}g`
+const formatGrams = (g) => {
+  if (g == null) return '—'
+  return `${g.toFixed(2)}g`
+}
 
 const formatGreenHosting = (val) => {
   if (val === true) return '✅ Yes'

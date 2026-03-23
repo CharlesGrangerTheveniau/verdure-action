@@ -40,6 +40,7 @@ describe('renderComment', () => {
 
   it('renders before/after table when has_baseline is true', () => {
     const comment = renderComment(baseDiff, noBaselineScan)
+    expect(comment).toContain('<!-- verdure -->')
     expect(comment).toContain('0.38g')
     expect(comment).toContain('0.47g')
     expect(comment).toContain('+21%')

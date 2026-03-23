@@ -62,16 +62,17 @@ export function analyzeSourceMap(map, assetBytes) {
  *
  * @param {string} assetUrl
  * @param {number} assetBytes
+ * @param {Record<string, string>} [headers] — optional headers (e.g. bypass auth)
  * @returns {Promise<{ package: string, bytes: number, pct: number }[] | null>}
  */
-export async function fetchAndAnalyzeSourceMap(assetUrl, assetBytes) {
+export async function fetchAndAnalyzeSourceMap(assetUrl, assetBytes, headers = {}) {
   const mapUrl = assetUrl + '.map'
 
   // HEAD check: verify map exists and isn't oversized before downloading
   try {
     const ctrl = new AbortController()
     const t = setTimeout(() => ctrl.abort(), 5000)
-    const head = await fetch(mapUrl, { method: 'HEAD', signal: ctrl.signal })
+    const head = await fetch(mapUrl, { method: 'HEAD', headers, signal: ctrl.signal })
     clearTimeout(t)
     if (!head.ok) return null
     const cl = head.headers.get('content-length')
@@ -84,7 +85,7 @@ export async function fetchAndAnalyzeSourceMap(assetUrl, assetBytes) {
   try {
     const ctrl = new AbortController()
     const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
-    const res = await fetch(mapUrl, { signal: ctrl.signal })
+    const res = await fetch(mapUrl, { headers, signal: ctrl.signal })
     clearTimeout(t)
     if (!res.ok) return null
     const map = await res.json()

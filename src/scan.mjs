@@ -123,11 +123,12 @@ export async function scanUrl(url) {
   })
 
   // Enrich large JS bundles with source map package breakdown (non-fatal)
+  const headers = bypassHeaders()
   await Promise.all(
     assets
       .filter(a => a.type === 'script' && a.bytes > 200 * 1024)
       .map(async a => {
-        a.packages = await fetchAndAnalyzeSourceMap(a.url, a.bytes)
+        a.packages = await fetchAndAnalyzeSourceMap(a.url, a.bytes, headers)
       })
   )
 

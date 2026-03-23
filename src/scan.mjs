@@ -33,10 +33,18 @@ async function getAssetSize(assetUrl) {
     const cl = res.headers.get('content-length')
     if (cl && parseInt(cl, 10) > 0) return parseInt(cl, 10)
 
-    // Fallback: GET and read content-length from response
-    const res2 = await fetch(assetUrl)
-    const buf = await res2.arrayBuffer()
-    return buf.byteLength
+    // Fallback: GET with its own timeout
+    const controller2 = new AbortController()
+    const timeout2 = setTimeout(() => controller2.abort(), TIMEOUT_MS)
+    try {
+      const res2 = await fetch(assetUrl, { signal: controller2.signal })
+      clearTimeout(timeout2)
+      const buf = await res2.arrayBuffer()
+      return buf.byteLength
+    } catch {
+      clearTimeout(timeout2)
+      return 0
+    }
   } catch {
     clearTimeout(timeout)
     return 0

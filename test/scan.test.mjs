@@ -5,8 +5,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('node-html-parser', () => ({
   parse: vi.fn(() => ({
     querySelectorAll: vi.fn((selector) => {
-      if (selector === 'script[src]') return [{ getAttribute: () => '/app.js' }]
-      if (selector === 'link[rel=stylesheet]') return [{ getAttribute: () => '/styles.css' }]
+      if (selector === 'script[src]') return [{ getAttribute: (attr) => attr === 'src' ? '/app.js' : null }]
+      if (selector === 'link[rel=stylesheet]') return [{ getAttribute: (attr) => attr === 'href' ? '/styles.css' : null }]
       if (selector === 'img[src]') return []
       if (selector === 'link[rel=preload]') return []
       return []
@@ -61,8 +61,9 @@ describe('scan.mjs — scanUrl()', () => {
   it('sets green_hosting to null when GWF check fails', async () => {
     mockFetch
       .mockResolvedValueOnce({ text: async () => '<html></html>', ok: true })
-      .mockResolvedValueOnce({ status: 200, headers: { get: () => '1000' } })
-      .mockRejectedValueOnce(new Error('GWF timeout'))
+      .mockResolvedValueOnce({ status: 200, headers: { get: () => '1000' } })  // app.js HEAD
+      .mockResolvedValueOnce({ status: 200, headers: { get: () => '500' } })   // styles.css HEAD
+      .mockRejectedValueOnce(new Error('GWF timeout'))                          // GWF check
 
     const { scanUrl } = await import('../src/scan.mjs')
     const result = await scanUrl('https://example.com')

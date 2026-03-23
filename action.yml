@@ -58,3 +58,7 @@ runs:
       env:
         VERDURE_TOKEN: ${{ inputs.token }}
         VERDURE_FAIL_ON_REGRESSION: ${{ inputs.fail-on-regression }}
+
+branding:
+  icon: 'activity'
+  color: 'green'

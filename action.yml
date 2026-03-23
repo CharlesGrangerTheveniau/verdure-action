@@ -61,7 +61,7 @@ runs:
       shell: bash
       run: node ${{ github.action_path }}/src/scan.mjs
       env:
-        VERDURE_URL: ${{ inputs.url != '' && inputs.url || github.event.deployment_status.target_url }}
+        VERDURE_URL: ${{ github.event.deployment_status.target_url || inputs.url }}
         VERDURE_SITEMAP_URL: ${{ inputs.sitemap-url }}
         VERDURE_BYPASS_SECRET: ${{ inputs.vercel-bypass-secret }}
 

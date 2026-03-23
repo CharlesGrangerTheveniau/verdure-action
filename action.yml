@@ -42,7 +42,6 @@ runs:
       run: node ${{ github.action_path }}/src/scan.mjs
       env:
         VERDURE_URL: ${{ inputs.url }}
-        VERDURE_TOKEN: ${{ inputs.token }}
 
     - name: Diff
       id: diff

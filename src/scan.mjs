@@ -14,6 +14,14 @@ const CONCURRENCY = 10
 const TIMEOUT_MS = 5000
 
 /**
+ * Build fetch headers, optionally including the Vercel bypass secret.
+ */
+function bypassHeaders() {
+  const secret = process.env.VERDURE_BYPASS_SECRET
+  return secret ? { 'x-vercel-protection-bypass': secret } : {}
+}
+
+/**
  * Detect asset type from URL extension
  */
 function assetType(url) {
@@ -30,10 +38,11 @@ function assetType(url) {
  * Tries HEAD first; falls back to GET + abort after reading headers.
  */
 async function getAssetSize(assetUrl) {
+  const headers = bypassHeaders()
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
-    const res = await fetch(assetUrl, { method: 'HEAD', signal: controller.signal })
+    const res = await fetch(assetUrl, { method: 'HEAD', headers, signal: controller.signal })
     clearTimeout(timeout)
     const cl = res.headers.get('content-length')
     if (cl && parseInt(cl, 10) > 0) return parseInt(cl, 10)
@@ -42,7 +51,7 @@ async function getAssetSize(assetUrl) {
     const controller2 = new AbortController()
     const timeout2 = setTimeout(() => controller2.abort(), TIMEOUT_MS)
     try {
-      const res2 = await fetch(assetUrl, { signal: controller2.signal })
+      const res2 = await fetch(assetUrl, { headers, signal: controller2.signal })
       clearTimeout(timeout2)
       const buf = await res2.arrayBuffer()
       return buf.byteLength
@@ -86,7 +95,7 @@ async function checkGreenHosting(hostname) {
  * Main scan function. Exported for testing.
  */
 export async function scanUrl(url) {
-  const pageRes = await fetch(url)
+  const pageRes = await fetch(url, { headers: bypassHeaders() })
   const html = await pageRes.text()
   const root = parse(html)
   const base = new URL(url)

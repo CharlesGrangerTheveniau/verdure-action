@@ -25,14 +25,14 @@ export async function runReport() {
   const prNumber = pr?.number
   const headSha = pr?.head?.sha
 
-  const diff = JSON.parse(readFileSync('verdure-diff.json', 'utf8'))
-  const scan = JSON.parse(readFileSync('verdure-scan.json', 'utf8'))
-
-  // Skip comment + check if not a PR context
+  // Skip comment + check if not a PR context (before reading files)
   if (!prNumber || !headSha) {
     console.log('ℹ️  No PR context — skipping comment and check run.')
     return
   }
+
+  const diff = JSON.parse(readFileSync('verdure-diff.json', 'utf8'))
+  const scan = JSON.parse(readFileSync('verdure-scan.json', 'utf8'))
 
   // Build the comment body
   const body = renderComment(diff, scan)

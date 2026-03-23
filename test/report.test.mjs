@@ -45,17 +45,20 @@ vi.mock('fs', async (importOriginal) => {
   }
 })
 
+let runReport
+
 describe('report.mjs — no baseline', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
     process.env.GITHUB_EVENT_NAME = 'pull_request'
     process.env.VERDURE_TOKEN = 'fake-token'
     process.env.VERDURE_FAIL_ON_REGRESSION = 'true'
+    const mod = await import('../src/report.mjs')
+    runReport = mod.runReport
   })
 
   it('posts a new comment when none exists', async () => {
     mockListComments.mockResolvedValueOnce({ data: [] })
-    const { runReport } = await import('../src/report.mjs')
     await runReport()
     expect(mockCreateComment).toHaveBeenCalledOnce()
     expect(mockCreateComment.mock.calls[0][0].body).toContain('<!-- verdure -->')
@@ -65,7 +68,6 @@ describe('report.mjs — no baseline', () => {
     mockListComments.mockResolvedValueOnce({
       data: [{ id: 99, body: '<!-- verdure --> old content' }]
     })
-    const { runReport } = await import('../src/report.mjs')
     await runReport()
     expect(mockUpdateComment).toHaveBeenCalledWith(
       expect.objectContaining({ comment_id: 99 })
@@ -74,7 +76,6 @@ describe('report.mjs — no baseline', () => {
   })
 
   it('creates a Check Run with neutral conclusion when no baseline', async () => {
-    const { runReport } = await import('../src/report.mjs')
     await runReport()
     expect(mockCreateCheckRun).toHaveBeenCalledWith(
       expect.objectContaining({

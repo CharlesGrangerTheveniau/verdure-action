@@ -33,7 +33,7 @@ describe('renderComment', () => {
 
   it('renders no-baseline message when has_baseline is false', () => {
     const comment = renderComment({ has_baseline: false }, noBaselineScan)
-    expect(comment).toContain('No baseline found')
+    expect(comment).toContain('No baseline yet')
     expect(comment).toContain('0.42g')
     expect(comment).toContain('439 KB') // 450000 / 1024 = 439.453125 → 439 KB
   })
@@ -50,7 +50,7 @@ describe('renderComment', () => {
     const diff = { ...baseDiff, regression: { carbon: true, weight: false } }
     const comment = renderComment(diff, noBaselineScan)
     expect(comment).toContain('⚠️')
-    expect(comment).toContain('Regression detected')
+    expect(comment).toContain('regression detected')
   })
 
   it('shows ✅ green hosting when true', () => {

@@ -1,3 +1,11 @@
+const getGrade = (grams) => {
+  if (grams < 0.095) return { label: 'A+', dot: '🟢' }
+  if (grams < 0.19)  return { label: 'A',  dot: '🟢' }
+  if (grams < 0.28)  return { label: 'B',  dot: '🟡' }
+  if (grams < 0.50)  return { label: 'C',  dot: '🟠' }
+  return                        { label: 'D',  dot: '🔴' }
+}
+
 const formatBytes = (bytes) => {
   if (bytes == null) return '—'
   const kb = Math.round(bytes / 1024)
@@ -31,21 +39,27 @@ const formatDelta = (pct, bytes) => {
  */
 export function renderComment(diff, scan) {
   if (!diff.has_baseline) {
+    const grade = getGrade(scan.co2_swd_grams)
     return [
       '<!-- verdure -->',
-      '## 🌿 Verdure',
+      `## 🌿 Verdure — ${grade.dot} Grade **${grade.label}**`,
       '',
-      'No baseline found ℹ️ — the next push to main will save one.',
-      'This PR shows current stats only — no diff available yet.',
+      '> [!NOTE]',
+      '> No baseline yet — the next push to `main` will save one. Showing current stats only.',
       '',
-      `CO₂ / visit: **${formatGrams(scan.co2_swd_grams)}** · ` +
-      `Page weight: **${formatBytes(scan.total_bytes)}** · ` +
-      `Green hosting: ${formatGreenHosting(scan.green_hosting)}`
+      '| Metric | Value |',
+      '|---|---|',
+      `| 🌍 CO₂ / visit | **${formatGrams(scan.co2_swd_grams)}** |`,
+      `| ⚖️ Page weight | **${formatBytes(scan.total_bytes)}** |`,
+      `| 🌱 Green hosting | ${formatGreenHosting(scan.green_hosting)} |`,
+      '',
+      `<sub>[Verdure](https://github.com/CharlesGrangerTheveniau/verdure-action) · SWD model · [methodology](https://sustainablewebdesign.org/calculating-digital-emissions/)</sub>`
     ].join('\n')
   }
 
   const hasRegression = diff.regression.carbon || diff.regression.weight
   const hasBudgetExceeded = diff.budget_exceeded.carbon || diff.budget_exceeded.weight
+  const grade = getGrade(diff.carbon_after_grams)
 
   const carbonRow = [
     '| 🌍 CO₂ / visit',
@@ -88,18 +102,19 @@ export function renderComment(diff, scan) {
   const footer = hasRegression || hasBudgetExceeded
     ? [
         '',
-        `> ⚠️ Regression detected`,
-        '> [Verdure](https://github.com/verdure-io/verdure) · SWD model · [methodology](https://sustainablewebdesign.org/calculating-digital-emissions/)'
+        '> [!WARNING]',
+        '> Carbon or weight regression detected — this PR increases your site\'s footprint.',
+        '',
+        `<sub>[Verdure](https://github.com/CharlesGrangerTheveniau/verdure-action) · SWD model · [methodology](https://sustainablewebdesign.org/calculating-digital-emissions/)</sub>`
       ].join('\n')
     : [
         '',
-        '> ✅ No regression detected',
-        '> [Verdure](https://github.com/verdure-io/verdure) · SWD model · [methodology](https://sustainablewebdesign.org/calculating-digital-emissions/)'
+        `<sub>✅ No regression · [Verdure](https://github.com/CharlesGrangerTheveniau/verdure-action) · SWD model · [methodology](https://sustainablewebdesign.org/calculating-digital-emissions/)</sub>`
       ].join('\n')
 
   return [
     '<!-- verdure -->',
-    '## 🌿 Verdure',
+    `## 🌿 Verdure — ${grade.dot} Grade **${grade.label}**`,
     '',
     '| | Before | After | Δ |',
     '|---|---|---|---|',

@@ -53,14 +53,30 @@ runs:
         VERDURE_URL: ${{ inputs.url }}
         VERDURE_SITEMAP_URL: ${{ inputs.sitemap-url }}
 
+    - name: Download baseline
+      if: github.event_name == 'pull_request'
+      uses: actions/download-artifact@v4
+      with:
+        name: verdure-baseline
+        path: ./.verdure-baseline
+      continue-on-error: true
+
     - name: Diff
       id: diff
       shell: bash
       run: node ${{ github.action_path }}/src/diff.mjs
       env:
-        VERDURE_TOKEN: ${{ inputs.token }}
         VERDURE_CARBON_BUDGET: ${{ inputs.carbon-budget }}
         VERDURE_WEIGHT_BUDGET: ${{ inputs.weight-budget }}
+
+    - name: Upload baseline
+      if: github.event_name == 'push'
+      uses: actions/upload-artifact@v4
+      with:
+        name: verdure-baseline
+        path: verdure-scan.json
+        retention-days: 90
+        overwrite: true
 
     - name: Report
       shell: bash

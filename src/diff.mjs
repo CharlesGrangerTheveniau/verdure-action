@@ -1,60 +1,30 @@
 // src/diff.mjs
-import { readFileSync, writeFileSync } from 'fs'
-import { DefaultArtifactClient } from '@actions/artifact'
-import github from '@actions/github'
+import { readFileSync, writeFileSync, existsSync } from 'fs'
 import core from '@actions/core'
 import { buildDiff } from './lib/diff-engine.mjs'
 import { detectRegression } from './lib/regression.mjs'
 
 /**
- * Baseline mode: upload verdure-scan.json as the reference artifact.
+ * Baseline mode: upload is handled by the actions/upload-artifact@v4 step in action.yml.
  */
 export async function runBaseline() {
-  const client = new DefaultArtifactClient()
-  await client.uploadArtifact('verdure-baseline', ['verdure-scan.json'], '.', {
-    retentionDays: 90
-  })
-  console.log('✅ Baseline uploaded as artifact "verdure-baseline"')
+  console.log('ℹ️  Baseline upload handled by workflow step.')
 }
 
 /**
- * Diff mode: download latest baseline artifact, compute diff, write verdure-diff.json.
+ * Diff mode: read baseline downloaded by actions/download-artifact@v4, compute diff.
  */
 export async function runDiff({ carbonBudget, weightBudget }) {
-  const token = process.env.VERDURE_TOKEN
-  if (!token) {
-    core.setFailed('VERDURE_TOKEN is required. Add `token: ${{ secrets.GITHUB_TOKEN }}` to your workflow.')
-    return
-  }
-  const octokit = github.getOctokit(token)
-  const { owner, repo } = github.context.repo
+  const baselinePath = './.verdure-baseline/verdure-scan.json'
 
-  // Derive the default branch from GITHUB_BASE_REF (set on PR events)
-  // or fall back to deriving it from GITHUB_REF (push events)
-  const ref = process.env.GITHUB_REF ?? ''
-  const defaultBranch = process.env.GITHUB_BASE_REF
-    ?? (ref === 'refs/heads/master' ? 'master' : 'main')
-
-  // Find the latest non-expired baseline artifact from the default branch
-  const { data } = await octokit.rest.actions.listArtifactsForRepo({
-    owner, repo, name: 'verdure-baseline', per_page: 10
-  })
-  const latest = data.artifacts
-    .filter(a => !a.expired && a.workflow_run?.head_branch === defaultBranch)
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
-
-  if (!latest) {
-    console.log('ℹ️  No baseline artifact found — this is likely the first run.')
+  if (!existsSync(baselinePath)) {
+    console.log('ℹ️  No baseline found — this is likely the first run.')
     writeFileSync('verdure-diff.json', JSON.stringify({ has_baseline: false }))
     core.setOutput('regression', 'none')
     return
   }
 
-  // Download the baseline artifact
-  const client = new DefaultArtifactClient()
-  await client.downloadArtifact(latest.id, { path: './.verdure-baseline' })
-
-  const baseline = JSON.parse(readFileSync('./.verdure-baseline/verdure-scan.json', 'utf8'))
+  const baseline = JSON.parse(readFileSync(baselinePath, 'utf8'))
   const current = JSON.parse(readFileSync('./verdure-scan.json', 'utf8'))
 
   const rawDiff = buildDiff(baseline, current)

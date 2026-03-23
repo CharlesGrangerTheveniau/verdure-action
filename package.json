@@ -8,7 +8,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@actions/artifact": "^2",
     "@actions/core": "^1",
     "@actions/github": "^6",
     "@tgwf/co2": "^0.14",

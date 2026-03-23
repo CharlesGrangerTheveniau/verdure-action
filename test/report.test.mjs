@@ -50,6 +50,7 @@ let runReport
 describe('report.mjs — no baseline', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
+    vi.resetModules()
     process.env.GITHUB_EVENT_NAME = 'pull_request'
     process.env.VERDURE_TOKEN = 'fake-token'
     process.env.VERDURE_FAIL_ON_REGRESSION = 'true'

@@ -29,7 +29,7 @@ const formatGreenHosting = (val) => {
 }
 
 const formatDelta = (pct, bytes) => {
-  if (pct == null) return bytes > 0 ? `+${formatBytes(bytes)}` : formatBytes(Math.abs(bytes))
+  if (pct == null || !isFinite(pct)) return bytes != null ? (bytes > 0 ? `+${formatBytes(bytes)}` : formatBytes(Math.abs(bytes))) : '—'
   const sign = pct > 0 ? '+' : ''
   return `${sign}${pct}%`
 }

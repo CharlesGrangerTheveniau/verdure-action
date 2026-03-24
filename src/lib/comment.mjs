@@ -148,7 +148,7 @@ export function renderComment(diff, scan) {
       renderOptimizationPrompt(scan.assets),
       renderSuggestions(scan),
       '',
-      `<sub>[Verdure](https://github.com/CharlesGrangerTheveniau/verdure-action) · SWD model · [methodology](https://sustainablewebdesign.org/calculating-digital-emissions/)</sub>`
+      `<sub>[Verdure](https://github.com/CharlesGrangerTheveniau/verdure-action) · SWD model · [methodology](https://sustainablewebdesign.org/calculating-digital-emissions/) · scanned \`${scan.url}\`</sub>`
     ].join('\n')
   }
 
@@ -200,11 +200,11 @@ export function renderComment(diff, scan) {
         '> [!WARNING]',
         '> Carbon or weight regression detected — this PR increases your site\'s footprint.',
         '',
-        `<sub>[Verdure](https://github.com/CharlesGrangerTheveniau/verdure-action) · SWD model · [methodology](https://sustainablewebdesign.org/calculating-digital-emissions/)</sub>`
+        `<sub>[Verdure](https://github.com/CharlesGrangerTheveniau/verdure-action) · SWD model · [methodology](https://sustainablewebdesign.org/calculating-digital-emissions/) · scanned \`${scan.url}\`</sub>`
       ].join('\n')
     : [
         '',
-        `<sub>✅ No regression · [Verdure](https://github.com/CharlesGrangerTheveniau/verdure-action) · SWD model · [methodology](https://sustainablewebdesign.org/calculating-digital-emissions/)</sub>`
+        `<sub>✅ No regression · [Verdure](https://github.com/CharlesGrangerTheveniau/verdure-action) · SWD model · [methodology](https://sustainablewebdesign.org/calculating-digital-emissions/) · scanned \`${scan.url}\`</sub>`
       ].join('\n')
 
   return [

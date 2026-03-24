@@ -16,7 +16,7 @@ inputs:
     required: false
     default: ''
   token:
-    description: 'GITHUB_TOKEN — needs pull-requests:write, checks:write, and actions:read'
+    description: 'GITHUB_TOKEN — needs pull-requests:write, checks:write, actions:read, and contents:read'
     required: true
   carbon-budget:
     description: 'Max CO₂ grams per visit (SWD model). Fails check if exceeded.'

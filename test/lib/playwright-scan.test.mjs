@@ -72,7 +72,7 @@ describe('playwright-scan.mjs — scanUrlWithPage()', () => {
     expect(result.assets).toHaveLength(0)
   })
 
-  it('skips data:, blob:, and chrome-extension: URLs', async () => {
+  it('skips data:, blob:, chrome-extension:, and about: URLs', async () => {
     const { scanUrlWithPage } = await import('../../src/lib/playwright-scan.mjs')
     const page = makeMockPage()
 
@@ -80,6 +80,7 @@ describe('playwright-scan.mjs — scanUrlWithPage()', () => {
       page._fireResponse(makeMockResponse({ url: 'data:image/png;base64,abc', resourceType: 'image', contentLength: '1000' }))
       page._fireResponse(makeMockResponse({ url: 'blob:https://example.com/video', resourceType: 'media', contentLength: '5000' }))
       page._fireResponse(makeMockResponse({ url: 'chrome-extension://abc/bg.js', contentLength: '2000' }))
+      page._fireResponse(makeMockResponse({ url: 'about:blank', resourceType: 'document', contentLength: '0' }))
     })
 
     const result = await scanUrlWithPage(page, 'https://example.com')

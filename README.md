@@ -52,6 +52,53 @@ If you're not on Vercel/Netlify/Railway, use the `pull_request` trigger instead 
 | `carbon-budget` | — | none | Max CO₂ grams/visit (SWD model). Fails check if exceeded. |
 | `weight-budget` | — | none | Max page weight in KB. Fails check if exceeded. |
 | `fail-on-regression` | — | `true` | Fail check on >5% carbon or weight regression |
+| `playwright` | — | `false` | Use Playwright for full network interception. Captures third-party scripts, fonts, and lazy-loaded assets. Requires `.verdure/login.mjs` for auth-gated pages. |
+| `login-script` | — | — | Path to login script (e.g. `.verdure/login.mjs`). Required if `playwright: true` and the page requires authentication. |
+
+## Playwright mode (authenticated scanning)
+
+By default, Verdure uses a fast fetch-based scanner that reads HTML and measures linked assets. For SPAs, auth-gated pages, or when you need to capture lazy-loaded assets and third-party scripts, enable Playwright mode:
+
+```yaml
+- uses: CharlesGrangerTheveniau/verdure-action@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    url: https://app.example.com/dashboard
+    playwright: 'true'
+    login-script: .verdure/login.mjs
+  env:
+    TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+    TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+```
+
+### Writing a login script
+
+Create `.verdure/login.mjs` in your repo. It must export a default async function that receives a [Playwright Page](https://playwright.dev/docs/api/class-page) object:
+
+```js
+// .verdure/login.mjs
+export default async function login(page) {
+  await page.goto('https://app.example.com/login')
+  await page.fill('[name=email]', process.env.TEST_EMAIL)
+  await page.fill('[name=password]', process.env.TEST_PASSWORD)
+  await page.click('[type=submit]')
+  await page.waitForURL('/dashboard')
+}
+```
+
+Credentials are read from environment variables — store them as GitHub Secrets, same pattern as your existing E2E tests.
+
+### Playwright vs fetch
+
+| | fetch (default) | playwright |
+|---|---|---|
+| First-party HTML-linked assets | ✓ | ✓ |
+| Lazy-loaded route chunks | ✗ | ✓ |
+| Third-party scripts (analytics, chat) | ✗ | ✓ |
+| Auth-gated pages | ✗ | ✓ |
+| Fonts via CSS `@font-face` | ✗ | ✓ |
+| Scan time | ~1s | ~15s |
+| Requires `ubuntu-latest` runner | No | Yes |
 
 ## Outputs
 

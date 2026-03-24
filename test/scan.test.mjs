@@ -14,6 +14,37 @@ vi.mock('node-html-parser', () => ({
   }))
 }))
 
+vi.mock('playwright', () => ({
+  chromium: {
+    launch: vi.fn().mockResolvedValue({
+      newContext: vi.fn().mockResolvedValue({
+        newPage: vi.fn().mockResolvedValue({})
+      }),
+      close: vi.fn().mockResolvedValue(undefined)
+    })
+  }
+}))
+
+vi.mock('../src/lib/playwright-scan.mjs', () => ({
+  scanUrlWithPage: vi.fn().mockResolvedValue({
+    url: 'https://example.com',
+    sha: 'abc123',
+    timestamp: '2024-01-01T00:00:00.000Z',
+    co2js_version: '0.14.0',
+    scan_engine: 'playwright',
+    green_hosting: null,
+    co2_swd_grams: 999,
+    co2_one_byte_grams: 999,
+    total_bytes: 100000,
+    assets: [],
+    summary: { asset_count: 0, js_bytes: 0, css_bytes: 0, image_bytes: 0, third_party_bytes: 0, third_party_count: 0 }
+  })
+}))
+
+vi.mock('../src/lib/login.mjs', () => ({
+  loadAndExecuteLogin: vi.fn().mockResolvedValue(undefined)
+}))
+
 // Mock global fetch
 const mockFetch = vi.fn()
 global.fetch = mockFetch
@@ -56,6 +87,7 @@ describe('scan.mjs — scanUrl()', () => {
     expect(result.co2_swd_grams).toBeGreaterThan(0)
     expect(result.assets).toHaveLength(2)
     expect(result.assets[0].normalized_url).toBe('app.js')
+    expect(result.scan_engine).toBe('fetch')
   })
 
   it('sets green_hosting to null when GWF check fails', async () => {
@@ -186,5 +218,54 @@ describe('scan.mjs — scanUrls()', () => {
 
     const { scanUrls } = await import('../src/scan.mjs')
     await expect(scanUrls(['https://example.com'])).rejects.toThrow('All URLs failed to scan')
+  })
+})
+
+describe('scan.mjs — scanUrlPlaywright()', () => {
+  beforeEach(() => {
+    // Do NOT call vi.clearAllMocks() here — it would wipe the mockResolvedValue
+    // implementations on the top-level vi.mock factories above.
+    // Reset only mockFetch to avoid fetch call bleed-through.
+    mockFetch.mockReset()
+    process.env.GITHUB_SHA = 'abc123'
+  })
+
+  it('sets green_hosting and recalculates CO₂, overwriting the value from scanUrlWithPage', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ green: true }) })
+
+    const { scanUrlPlaywright } = await import('../src/scan.mjs')
+    const result = await scanUrlPlaywright('https://example.com')
+
+    expect(result.scan_engine).toBe('playwright')
+    expect(result.green_hosting).toBe(true)
+    // scanUrlWithPage mock returns 999 — recalculation overwrote it with the real co2.js value
+    expect(result.co2_swd_grams).not.toBe(999)
+    expect(result.co2_swd_grams).toBeGreaterThan(0)
+    expect(result.co2_one_byte_grams).not.toBe(999)
+    expect(result.co2_one_byte_grams).toBeGreaterThan(0)
+  })
+
+  it('closes the browser even if scanUrlWithPage throws', async () => {
+    const { scanUrlWithPage } = await import('../src/lib/playwright-scan.mjs')
+    scanUrlWithPage.mockRejectedValueOnce(new Error('scan failed'))
+
+    const { scanUrlPlaywright } = await import('../src/scan.mjs')
+    await expect(scanUrlPlaywright('https://example.com')).rejects.toThrow('scan failed')
+
+    const { chromium } = await import('playwright')
+    expect(chromium.launch).toHaveBeenCalled()
+    const lastCallIndex = chromium.launch.mock.results.length - 1
+    const mockBrowser = await chromium.launch.mock.results[lastCallIndex].value
+    expect(mockBrowser.close).toHaveBeenCalled()
+  })
+
+  it('calls loadAndExecuteLogin when loginScript is provided', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ green: false }) })
+
+    const { loadAndExecuteLogin } = await import('../src/lib/login.mjs')
+    const { scanUrlPlaywright } = await import('../src/scan.mjs')
+
+    await scanUrlPlaywright('https://example.com', { loginScript: '/path/to/login.mjs' })
+    expect(loadAndExecuteLogin).toHaveBeenCalledWith(expect.anything(), '/path/to/login.mjs')
   })
 })

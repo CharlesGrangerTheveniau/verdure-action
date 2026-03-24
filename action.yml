@@ -16,7 +16,7 @@ inputs:
     required: false
     default: ''
   token:
-    description: 'GITHUB_TOKEN — needs pull-requests:write, checks:write, and actions:read'
+    description: 'GITHUB_TOKEN — needs pull-requests:write, checks:write, actions:read, and contents:read'
     required: true
   carbon-budget:
     description: 'Max CO₂ grams per visit (SWD model). Fails check if exceeded.'
@@ -30,6 +30,14 @@ inputs:
     description: 'Fail check if regression exceeds 5% threshold'
     required: false
     default: 'true'
+  playwright:
+    description: 'Use Playwright for full network interception. Captures lazy-loaded assets, third-party scripts, and fonts. Requires ubuntu-latest runner. Slower (~15s per page).'
+    required: false
+    default: 'false'
+  login-script:
+    description: 'Path (relative to repo root) to a JS file that logs in before scanning. Called with a Playwright page object. Required for auth-gated pages.'
+    required: false
+    default: ''
 
 outputs:
   carbon-grams:
@@ -49,6 +57,11 @@ runs:
       shell: bash
       run: npm ci --prefix ${{ github.action_path }}
 
+    - name: Install Playwright browser
+      if: inputs.playwright == 'true'
+      shell: bash
+      run: npx --prefix ${{ github.action_path }} playwright install chromium --with-deps
+
     - name: Detect mode
       id: mode
       shell: bash
@@ -64,6 +77,8 @@ runs:
         VERDURE_URL: ${{ github.event.deployment_status.target_url || inputs.url }}
         VERDURE_SITEMAP_URL: ${{ inputs.sitemap-url }}
         VERDURE_BYPASS_SECRET: ${{ inputs.vercel-bypass-secret }}
+        VERDURE_PLAYWRIGHT: ${{ inputs.playwright }}
+        VERDURE_LOGIN_SCRIPT: ${{ inputs.login-script }}
 
     - name: Find baseline run
       id: find-baseline

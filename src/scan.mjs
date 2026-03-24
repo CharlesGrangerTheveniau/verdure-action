@@ -5,6 +5,9 @@ import { co2 } from '@tgwf/co2'
 import core from '@actions/core'
 import { normalizeUrl } from './lib/normalize.mjs'
 import { fetchAndAnalyzeSourceMap } from './lib/sourcemap.mjs'
+import { chromium } from 'playwright'
+import { scanUrlWithPage } from './lib/playwright-scan.mjs'
+import { loadAndExecuteLogin } from './lib/login.mjs'
 
 const CO2JS_VERSION = JSON.parse(
   readFileSync(new URL('../node_modules/@tgwf/co2/package.json', import.meta.url), 'utf8')
@@ -154,6 +157,7 @@ export async function scanUrl(url) {
     sha,
     timestamp: new Date().toISOString(),
     co2js_version: CO2JS_VERSION,
+    scan_engine: 'fetch',
     green_hosting,
     co2_swd_grams: swd.perByte(total_bytes, green_hosting ?? false),
     co2_one_byte_grams: oneByte.perByte(total_bytes, green_hosting ?? false),
@@ -248,20 +252,65 @@ export async function scanUrls(urls) {
   }
 }
 
+/**
+ * Playwright-based scan. Launches a real browser, optionally logs in via a
+ * user-supplied script, then captures all network assets via response interception.
+ *
+ * @param {string} url - URL to scan
+ * @param {{ loginScript?: string }} options
+ */
+export async function scanUrlPlaywright(url, { loginScript } = {}) {
+  const browser = await chromium.launch()
+  const context = await browser.newContext()
+  const page = await context.newPage()
+
+  try {
+    if (loginScript) {
+      await loadAndExecuteLogin(page, loginScript)
+    }
+
+    const result = await scanUrlWithPage(page, url)
+
+    // Green hosting check uses the same hostname-based lookup
+    result.green_hosting = await checkGreenHosting(new URL(url).hostname)
+
+    // Recalculate CO₂ with green_hosting now known
+    const swd = new co2({ model: 'swd' })
+    const oneByte = new co2({ model: '1byte' })
+    result.co2_swd_grams = swd.perByte(result.total_bytes, result.green_hosting ?? false)
+    result.co2_one_byte_grams = oneByte.perByte(result.total_bytes, result.green_hosting ?? false)
+
+    return result
+  } finally {
+    await browser.close()
+  }
+}
+
 // Entry point when run as a script (skipped during Vitest runs)
 if (!process.env.VITEST) {
   const sitemapUrl = process.env.VERDURE_SITEMAP_URL
   const primaryUrl = process.env.VERDURE_URL
+  const usePlaywright = process.env.VERDURE_PLAYWRIGHT === 'true'
+  const loginScript = process.env.VERDURE_LOGIN_SCRIPT
+    ? `${process.env.GITHUB_WORKSPACE ?? '.'}/${process.env.VERDURE_LOGIN_SCRIPT}`
+    : undefined
 
-  let urls = sitemapUrl ? await parseSitemap(sitemapUrl) : []
-  if (primaryUrl && !urls.includes(primaryUrl)) urls.unshift(primaryUrl)
-  if (urls.length === 0) { console.error('VERDURE_URL or VERDURE_SITEMAP_URL is required'); process.exit(1) }
+  let scan
 
-  const scan = urls.length === 1 ? await scanUrl(urls[0]) : await scanUrls(urls)
+  if (usePlaywright) {
+    if (!primaryUrl) { console.error('VERDURE_URL is required in playwright mode'); process.exit(1) }
+    scan = await scanUrlPlaywright(primaryUrl, { loginScript })
+  } else {
+    let urls = sitemapUrl ? await parseSitemap(sitemapUrl) : []
+    if (primaryUrl && !urls.includes(primaryUrl)) urls.unshift(primaryUrl)
+    if (urls.length === 0) { console.error('VERDURE_URL or VERDURE_SITEMAP_URL is required'); process.exit(1) }
+    scan = urls.length === 1 ? await scanUrl(urls[0]) : await scanUrls(urls)
+  }
+
   writeFileSync('verdure-scan.json', JSON.stringify(scan, null, 2))
 
   core.setOutput('carbon-grams', scan.co2_swd_grams.toString())
   core.setOutput('page-weight-kb', Math.round(scan.total_bytes / 1024).toString())
 
-  console.log(`✅ Scan complete: ${scan.co2_swd_grams.toFixed(3)}g CO₂ · ${Math.round(scan.total_bytes / 1024)} KB`)
+  console.log(`✅ Scan complete [${scan.scan_engine}]: ${scan.co2_swd_grams.toFixed(3)}g CO₂ · ${Math.round(scan.total_bytes / 1024)} KB`)
 }

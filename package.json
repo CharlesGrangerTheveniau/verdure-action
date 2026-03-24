@@ -11,7 +11,8 @@
     "@actions/core": "^1",
     "@actions/github": "^6",
     "@tgwf/co2": "^0.14",
-    "node-html-parser": "^6"
+    "node-html-parser": "^6",
+    "playwright": "^1"
   },
   "devDependencies": {
     "vitest": "^1"
